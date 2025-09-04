@@ -25,11 +25,17 @@ repositories {
 }
 
 dependencies {
+    // openai-java
+    implementation("com.openai:openai-java:3.1.2")
+    // swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.0'
+    // commons-lang3 CVE-2025-48924 취약점 해결을 위해 버전을 3.18.0으로 명시
+    implementation 'org.apache.commons:commons-lang3:3.18.0'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

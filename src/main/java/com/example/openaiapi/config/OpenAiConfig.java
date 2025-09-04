@@ -2,6 +2,7 @@ package com.example.openaiapi.config;
 
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,14 +14,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenAiConfig {
 
-    private final OpenAiProperties openAiProperties;
+    private final OpenAiProperties properties;
 
     @Bean
     public OpenAIClient openAIClient() {
         // OpenAI SDK(Software Development Kit) 클라이언트 생성
         return OpenAIOkHttpClient.builder()
-                .apiKey(openAiProperties.getApiKey()) // API 키 주입
-                .baseUrl(openAiProperties.getApiUrl())
+                .apiKey(properties.getApiKey()) // API 키 주입
+                .baseUrl(properties.getApiUrl())
                 .build();
+    }
+    @PostConstruct
+    public void checkKey() {
+        System.out.println("✅ Loaded API Key = " + properties.getApiKey());
     }
 }

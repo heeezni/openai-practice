@@ -3,24 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chart.js Practice</title>
+    <title>Price Prediction Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #predictionForm { margin-bottom: 20px; }
+        #predictionForm input { margin-right: 10px; padding: 5px; }
+        #explanation { margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
 </head>
 <body>
+
+    <h1>Price Prediction</h1>
+
+    <div id="predictionForm">
+        <label for="productName">Product Name:</label>
+        <input type="text" id="productName" placeholder="e.g., 와인">
+        <label for="currentPrice">Current Price:</label>
+        <input type="number" id="currentPrice" placeholder="e.g., 35000">
+        <label for="trendData">Trend Data:</label>
+        <input type="text" id="trendData" placeholder="e.g., 34000,34500,35000">
+        <button onclick="fetchPrediction()">Predict Price</button>
+    </div>
+
     <div style="width: 80%; margin: auto;">
         <canvas id="myChart"></canvas>
     </div>
 
+    <div id="explanation"></div>
+
     <script>
         const ctx = document.getElementById('myChart');
-
-        new Chart(ctx, {
+        let myChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                labels: [],
                 datasets: [{
-                    label: 'Sample Data',
-                    data: [65, 59, 80, 81, 56, 55, 40],
+                    label: 'Predicted Price',
+                    data: [],
                     fill: false,
                     borderColor: 'rgb(75, 192, 192)',
                     tension: 0.1
@@ -29,11 +49,47 @@
             options: {
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: false
                     }
                 }
             }
         });
+
+        async function fetchPrediction() {
+            const productName = document.getElementById('productName').value;
+            const currentPrice = document.getElementById('currentPrice').value;
+            const trendData = document.getElementById('trendData').value;
+
+            if (!productName || !currentPrice || !trendData) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            const url = `/api/predict?productName=${encodeURIComponent(productName)}&currentPrice=${currentPrice}&trendData=${encodeURIComponent(trendData)}`;
+
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Update Chart
+                    myChart.data.labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                    myChart.data.datasets[0].data = [data.week1, data.week2, data.week3, data.week4];
+                    myChart.update();
+
+                    // Display Explanation
+                    document.getElementById('explanation').innerText = data.explanation;
+                } else {
+                    // Handle HTTP errors
+                    console.error('Error fetching prediction:', `HTTP error! status: ${response.status}`);
+                    alert('Failed to fetch prediction. See console for details.');
+                }
+            } catch (error) {
+                // Handle network errors or JSON parsing errors
+                console.error('Error fetching prediction:', error);
+                alert('Failed to fetch prediction. See console for details.');
+            }
+        }
     </script>
 </body>
 </html>

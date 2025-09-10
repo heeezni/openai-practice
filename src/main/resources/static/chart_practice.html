@@ -19,13 +19,17 @@
 
     <!-- 사용자 입력 폼 -->
     <div id="predictionForm">
-        <label for="productName">상품명:</label>
-        <input type="text" id="productName" placeholder="예: 와인">
-        <label for="currentPrice">현재가격:</label>
-        <input type="number" id="currentPrice" placeholder="예: 35000">
-        <label for="trendData">가격 추이 데이터:</label>
-        <input type="text" id="trendData" placeholder="예: 34000,34500,35000">
-        <button onclick="fetchPrediction()">가격 예측하기</button>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <label for="productName">상품명:</label>
+            <input type="text" id="productName" placeholder="예: 와인">
+            <label for="currentPrice">현재가격:</label>
+            <input type="number" id="currentPrice" placeholder="예: 35000">
+            <button onclick="fetchPrediction()">가격 예측하기</button>
+        </div>
+        <div style="margin-bottom: 5px;">
+            <label for="trendData">가격 추이 데이터 (과거→최신 순):</label>
+            <input type="text" id="trendData" placeholder="예: 34000,34500,35000 (3주전→2주전→1주전)" style="width: 400px; margin-left: 10px;">
+        </div>
     </div>
 
     <!-- 차트가 그려질 캔버스 영역 -->
@@ -33,8 +37,20 @@
         <canvas id="myChart"></canvas>
     </div>
 
+    <!-- 주의사항 문구 -->
+    <div style="margin: 20px auto; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; width: 80%; text-align: center;">
+        <p style="margin: 0; color: #856404; font-weight: bold;">⚠️ 주의사항</p>
+        <p style="margin: 5px 0 0 0; color: #856404; font-size: 14px;">
+            이 가격 예측은 AI에 의한 추정치로 실제 가격과 다를 수 있습니다.<br>
+            구매 결정 시 참고용으로만 활용해 주시기 바랍니다.
+        </p>
+    </div>
+
     <!-- AI의 예측 설명이 표시될 영역 -->
-    <div id="explanation"></div>
+    <div id="explanation" style="margin: 20px auto; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; background-color: #e9ecef; width: 80%; display: none;">
+        <p style="margin: 0 0 10px 0; color: #495057; font-weight: bold;">🤖 AI 예측 분석</p>
+        <div id="explanationContent" style="color: #495057; font-size: 14px; line-height: 1.4;"></div>
+    </div>
 
     <script>
         // 차트를 그릴 캔버스 요소를 가져옴
@@ -44,19 +60,54 @@
         let myChart = new Chart(ctx, {
             type: 'line', // 선 그래프 타입
             data: {
-                labels: [], // x축 레이블 (주차별 정보가 들어갈 예정)
-                datasets: [{
-                    label: '예상 가격',
-                    data: [], // y축 데이터 (예측된 가격이 들어갈 예정)
-                    fill: false, // 선 아래 영역을 채우지 않음
-                    borderColor: 'rgb(75, 192, 192)', // 선 색상
-                    tension: 0.1 // 선의 곡선 정도 (0이면 직선, 1이면 매우 곡선)
-                }]
+                labels: [], // x축 레이블 (과거 데이터 + 예측 데이터)
+                datasets: [
+                    {
+                        label: '실제 가격 추이',
+                        data: [], // 과거 가격 데이터
+                        fill: false,
+                        borderColor: 'rgb(54, 162, 235)', // 파란색 실선
+                        backgroundColor: 'rgb(54, 162, 235)',
+                        tension: 0.1,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'AI 예측 가격',
+                        data: [], // 예측된 가격 데이터
+                        fill: false,
+                        borderColor: 'rgb(255, 99, 132)', // 빨간색 점선
+                        backgroundColor: 'rgb(255, 99, 132)',
+                        borderDash: [5, 5], // 점선 스타일
+                        tension: 0.1,
+                        borderWidth: 2
+                    }
+                ]
             },
             options: {
+                responsive: true,
+                interaction: {
+                    // 툴팁 : Chart.js에서 기본으로 제공하는 기능
+                    intersect: false //  선 위가 아닌 전체 x축 영역에서 툴팁이 활성화되도록 함
+                },
                 scales: {
                     y: {
-                        beginAtZero: false // y축이 0부터 시작하지 않도록 설정 (가격 데이터에 적합)
+                        beginAtZero: false, // y축이 0부터 시작하지 않도록 설정
+                        title: {
+                            display: true,
+                            text: '가격 (원)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: '기간'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
                     }
                 }
             }
@@ -87,13 +138,28 @@
                     // 응답이 성공적일 때: JSON 데이터로 변환
                     const data = await response.json();
 
-                    // 차트 데이터 업데이트
-                    myChart.data.labels = ['1주차', '2주차', '3주차', '4주차'];
-                    myChart.data.datasets[0].data = [data.week1, data.week2, data.week3, data.week4];
+                    // 입력된 가격 추이 데이터를 배열로 변환 (과거→최신 순으로 입력받음)
+                    const trendArray = trendData.split(',').map(price => parseInt(price.trim()));
+                    const trendLabels = trendArray.map((_, index) => `${trendArray.length - index}주 전`);
+                    
+                    // 예측 데이터
+                    const predictionData = [data.week1, data.week2, data.week3, data.week4];
+                    const predictionLabels = ['1주 후', '2주 후', '3주 후', '4주 후'];
+
+                    // 차트 데이터 업데이트: 과거 데이터 + 현재 + 예측 데이터
+                    myChart.data.labels = [...trendLabels, '현재', ...predictionLabels]; // 전개 연산자(...) : 배열을 풀어서 개별 요소들로 만드는 역할
+                    
+                    // 실제 가격 추이 데이터 (과거 데이터 + 현재 가격)
+                    myChart.data.datasets[0].data = [...trendArray, parseInt(currentPrice), ...Array(4).fill(null)]; // 미래 4개 구간은 빈 값
+                    
+                    // 예측 가격 데이터 (현재 가격부터 시작하여 예측 데이터로 연결)
+                    myChart.data.datasets[1].data = [...Array(trendArray.length).fill(null), parseInt(currentPrice), ...predictionData]; // 과거데이터 길이만큼 빈 값
+                    
                     myChart.update(); // 차트를 다시 그림
 
                     // AI의 예측 설명을 화면에 표시
-                    document.getElementById('explanation').innerText = data.explanation;
+                    document.getElementById('explanationContent').innerText = data.explanation;
+                    document.getElementById('explanation').style.display = 'block';
                 } else {
                     // HTTP 에러 처리 (404, 500 등)
                     console.error('예측 요청 오류:', `HTTP 에러! 상태: ${response.status}`);

@@ -4,12 +4,14 @@ import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * OpenAI SDK에서 쓸 수 있는 OpenAI 객체를 Bean으로 등록
  * */
+@Slf4j
 @RequiredArgsConstructor
 @Configuration
 public class OpenAiConfig {
@@ -26,6 +28,6 @@ public class OpenAiConfig {
     }
     @PostConstruct
     public void checkKey() {
-        System.out.println("✅ Loaded API Key = " + properties.getApiKey());
+        log.debug("✅ Loaded API Key = {}", properties.getApiKey());
     }
 }

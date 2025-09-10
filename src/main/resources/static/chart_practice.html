@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Price Prediction Chart</title>
+    <title>가격 예측 차트</title>
+    <!-- Chart.js 라이브러리를 CDN으로 불러옴 - 차트를 그리기 위해 필요 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; padding: 20px; }
@@ -14,80 +15,94 @@
 </head>
 <body>
 
-    <h1>Price Prediction</h1>
+    <h1>가격 예측</h1>
 
+    <!-- 사용자 입력 폼 -->
     <div id="predictionForm">
-        <label for="productName">Product Name:</label>
-        <input type="text" id="productName" placeholder="e.g., 와인">
-        <label for="currentPrice">Current Price:</label>
-        <input type="number" id="currentPrice" placeholder="e.g., 35000">
-        <label for="trendData">Trend Data:</label>
-        <input type="text" id="trendData" placeholder="e.g., 34000,34500,35000">
-        <button onclick="fetchPrediction()">Predict Price</button>
+        <label for="productName">상품명:</label>
+        <input type="text" id="productName" placeholder="예: 와인">
+        <label for="currentPrice">현재가격:</label>
+        <input type="number" id="currentPrice" placeholder="예: 35000">
+        <label for="trendData">가격 추이 데이터:</label>
+        <input type="text" id="trendData" placeholder="예: 34000,34500,35000">
+        <button onclick="fetchPrediction()">가격 예측하기</button>
     </div>
 
+    <!-- 차트가 그려질 캔버스 영역 -->
     <div style="width: 80%; margin: auto;">
         <canvas id="myChart"></canvas>
     </div>
 
+    <!-- AI의 예측 설명이 표시될 영역 -->
     <div id="explanation"></div>
 
     <script>
+        // 차트를 그릴 캔버스 요소를 가져옴
         const ctx = document.getElementById('myChart');
+        
+        // Chart.js를 사용하여 선 그래프 차트 생성
         let myChart = new Chart(ctx, {
-            type: 'line',
+            type: 'line', // 선 그래프 타입
             data: {
-                labels: [],
+                labels: [], // x축 레이블 (주차별 정보가 들어갈 예정)
                 datasets: [{
-                    label: 'Predicted Price',
-                    data: [],
-                    fill: false,
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
+                    label: '예상 가격',
+                    data: [], // y축 데이터 (예측된 가격이 들어갈 예정)
+                    fill: false, // 선 아래 영역을 채우지 않음
+                    borderColor: 'rgb(75, 192, 192)', // 선 색상
+                    tension: 0.1 // 선의 곡선 정도 (0이면 직선, 1이면 매우 곡선)
                 }]
             },
             options: {
                 scales: {
                     y: {
-                        beginAtZero: false
+                        beginAtZero: false // y축이 0부터 시작하지 않도록 설정 (가격 데이터에 적합)
                     }
                 }
             }
         });
 
+        // 비동기 함수: 서버에서 가격 예측 데이터를 받아와서 차트를 업데이트
+        // async function : 비동기 코드(fetch)를 마치 동기 코드처럼 순서대로 쓰게 해주는 문법
         async function fetchPrediction() {
+            // 사용자가 입력한 값들을 가져옴
             const productName = document.getElementById('productName').value;
             const currentPrice = document.getElementById('currentPrice').value;
             const trendData = document.getElementById('trendData').value;
 
+            // 필수 입력 값들이 모두 입력되었는지 확인
             if (!productName || !currentPrice || !trendData) {
-                alert('Please fill in all fields.');
+                alert('모든 필드를 입력해주세요.');
                 return;
             }
 
+            // API 요청 URL 생성 (encodeURIComponent로 특수문자 인코딩)
             const url = `/api/predict?productName=${encodeURIComponent(productName)}&currentPrice=${currentPrice}&trendData=${encodeURIComponent(trendData)}`;
 
             try {
+                // 서버에 HTTP 요청을 보내고 응답을 기다림
                 const response = await fetch(url);
+                
                 if (response.ok) {
+                    // 응답이 성공적일 때: JSON 데이터로 변환
                     const data = await response.json();
 
-                    // Update Chart
-                    myChart.data.labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                    // 차트 데이터 업데이트
+                    myChart.data.labels = ['1주차', '2주차', '3주차', '4주차'];
                     myChart.data.datasets[0].data = [data.week1, data.week2, data.week3, data.week4];
-                    myChart.update();
+                    myChart.update(); // 차트를 다시 그림
 
-                    // Display Explanation
+                    // AI의 예측 설명을 화면에 표시
                     document.getElementById('explanation').innerText = data.explanation;
                 } else {
-                    // Handle HTTP errors
-                    console.error('Error fetching prediction:', `HTTP error! status: ${response.status}`);
-                    alert('Failed to fetch prediction. See console for details.');
+                    // HTTP 에러 처리 (404, 500 등)
+                    console.error('예측 요청 오류:', `HTTP 에러! 상태: ${response.status}`);
+                    alert('가격 예측을 가져오는데 실패했습니다. 콘솔을 확인해주세요.');
                 }
             } catch (error) {
-                // Handle network errors or JSON parsing errors
-                console.error('Error fetching prediction:', error);
-                alert('Failed to fetch prediction. See console for details.');
+                // 네트워크 에러나 JSON 파싱 에러 처리
+                console.error('예측 요청 오류:', error);
+                alert('가격 예측을 가져오는데 실패했습니다. 네트워크 연결을 확인해주세요.');
             }
         }
     </script>

@@ -39,6 +39,14 @@ public class PricePredictionService {
         ChatCompletion completion = openAIClient.chat().completions().create(params);
         // 첫번째 응답 텍스트 꺼내기 (Optional<String> → String)
         String content = completion.choices().getFirst().message().content().orElse("");
+
+        // OpenAI API가 응답을 마크다운 코드블록으로 감싸서 보낼 때를 대비한 안전 장치
+        if (content.startsWith("```json")) {
+            content = content.substring(7, content.length() - 3).trim();
+        } else if (content.startsWith("```")) {
+            content = content.substring(3, content.length() - 3).trim();
+        }
+
         // Jackson으로 JSON 문자열 → DTO 변환
         return objectMapper.readValue(content, PricePredictionResponse.class);
     }

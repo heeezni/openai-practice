@@ -1,34 +1,51 @@
 package com.example.openaiapi.controller;
 
+import com.example.openaiapi.dto.PricePredictionRequest;
 import com.example.openaiapi.dto.PricePredictionResponse;
+import com.example.openaiapi.dto.ErrorResponse;
 import com.example.openaiapi.service.PricePredictionService;
-import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-/**
- * Service에서 DTO 리턴받아 그대로 JSON으로 응답
- * */
+import jakarta.validation.Valid;
+
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/predict")
+@RequestMapping("/api/predictions")
 public class PricePredictionController {
     private final PricePredictionService pricePredictionService;
 
-    @GetMapping
-    public PricePredictionResponse predict(
-            @Parameter(description = "상품명", example = "와인")
-            @RequestParam String productName,
-
-            @Parameter(description = "현재 가격", example = "35000")
-            @RequestParam double currentPrice,
-
-            @Parameter(description = "최근 가격 추이 (쉼표 구분)", example = "34000,34500,35000")
-            @RequestParam String trendData) throws Exception {
-
-        return pricePredictionService.predictPrice(productName, currentPrice, trendData);
+    @Operation(summary = "가격 예측 생성", description = "상품의 가격 예측을 생성합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "예측 생성 성공",
+                    content = @Content(schema = @Schema(implementation = PricePredictionResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 에러",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping
+    public ResponseEntity<?> createPrediction(@Valid @RequestBody PricePredictionRequest request) {
+        try {
+            PricePredictionResponse response = pricePredictionService.predictPrice(
+                    request.getProductName(), 
+                    request.getCurrentPrice(), 
+                    request.getTrendData()
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (IllegalArgumentException e) {
+            ErrorResponse error = new ErrorResponse("INVALID_INPUT", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (Exception e) {
+            ErrorResponse error = new ErrorResponse("INTERNAL_ERROR", "예측 생성 중 오류가 발생했습니다.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
     }
 }

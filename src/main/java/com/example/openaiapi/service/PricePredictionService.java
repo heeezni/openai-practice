@@ -20,6 +20,16 @@ public class PricePredictionService {
     private final ObjectMapper objectMapper = new ObjectMapper(); // Jackson 변환기
 
     public PricePredictionResponse predictPrice(String productName, double currentPrice, String trendData) throws Exception {
+        // 입력 값 검증
+        if (productName == null || productName.trim().isEmpty()) {
+            throw new IllegalArgumentException("상품명은 필수입니다.");
+        }
+        if (currentPrice <= 0) {
+            throw new IllegalArgumentException("현재 가격은 0보다 커야 합니다.");
+        }
+        if (trendData == null || trendData.trim().isEmpty()) {
+            throw new IllegalArgumentException("가격 추이 데이터는 필수입니다.");
+        }
         // AI에게 줄 프롬프트: 반드시 JSON 형식으로 응답하도록 강제
         String prompt = String.format("""
                 상품명: %s
